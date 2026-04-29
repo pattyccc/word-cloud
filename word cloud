@@ -1,0 +1,73 @@
+import tkinter as tk
+from tkinter import scrolledtext
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+import re
+
+# 1. 核心邏輯：運用 Hash 統計字頻
+def generate_refined_wordcloud():
+    raw_text = text_area.get("1.0", tk.END).lower()
+    
+    # 定義 Stop Words (排除不重要的字) [cite: 38, 281]
+    stop_words = {
+        'the', 'and', 'is', 'are', 'to', 'in', 'of', 'it', 'my', 'some', 'with',
+        'that', 'this', 'for', 'was', 'on', 'as', 'at', 'by', 'an', 'be', 'or'
+    }
+    
+    # 建立雜湊表 (Dictionary) [cite: 328, 329]
+    word_counts = {} 
+    
+    # 清理文字，保留英文字母
+    words = re.findall(r'\b\w+\b', raw_text)
+    
+    for w in words:
+        # 雜湊搜尋與過濾邏輯：Hash 的搜尋速度極快 [cite: 29, 338]
+        if w not in stop_words and len(w) > 1:
+            # 運用 Hash Key 的唯一性進行計數 [cite: 44, 343]
+            word_counts[w] = word_counts.get(w, 0) + 1
+            
+    # 建立精煉版的文字雲
+    wc = WordCloud(
+        width=1000, height=600, 
+        background_color='white',
+        max_words=50, # 限制前 50 個高頻字
+        colormap='plasma'
+    ).generate_from_frequencies(word_counts)
+    
+    plt.figure(figsize=(10, 6))
+    plt.imshow(wc, interpolation='bilinear')
+    plt.axis("off")
+    plt.show()
+
+# --- 處理 Mac 貼上功能與右鍵選單 ---
+def show_menu(event):
+    menu.post(event.x_root, event.y_root)
+
+def paste_text():
+    try:
+        text_area.insert(tk.INSERT, root.clipboard_get())
+    except:
+        pass
+
+# --- 建立 GUI ---
+root = tk.Tk()
+root.title("作業：文字雲")
+
+# 強制支援 Mac 的 Command+V 快捷鍵
+root.bind_class("Text", "<Command-v>", lambda event: paste_text())
+
+header = tk.Label(root, text="請貼上文章")
+header.pack(pady=10)
+
+text_area = scrolledtext.ScrolledText(root, width=60, height=15)
+text_area.pack(padx=20, pady=10)
+
+# 建立右鍵選單
+menu = tk.Menu(root, tearoff=0)
+menu.add_command(label="貼上 (Paste)", command=paste_text)
+text_area.bind("<Button-2>" if root.tk.call('tk', 'windowingsystem') == 'aqua' else "<Button-3>", show_menu)
+
+run_btn = tk.Button(root, text="開始 Hash 統計並產生文字雲", command=generate_refined_wordcloud, pady=10)
+run_btn.pack(pady=20)
+
+root.mainloop()
